@@ -1,20 +1,16 @@
-#import importlib
-#import pathlib
-#import os
+
 
 import pandas as pd
-#import numpy as np
-#from datetime import datetime as dt
-#import flask
+
 import requests
 
 import dash
 import dash_core_components as dcc
 import dash_html_components as html
 import plotly.graph_objs as go
-#from dash.dependencies import Input, Output, State
+
 import json
-#from sqlalchemy import create_engine
+
 import locale
 
 locale.setlocale(locale.LC_ALL, '')
@@ -186,7 +182,7 @@ app.layout = html.Div(children=[
                                     {'label': 'Diciembre', 'value': '12'}
 
                                 ],
-                                value='1'
+                                value='12'
                             ),
                             html.H6(
                                 "Seleccione un rango de edad:",
@@ -226,7 +222,7 @@ app.layout = html.Div(children=[
 
                                     dcc.Dropdown(
                                         id="educational_select",
-                                        value='Ninguno',
+                                        value='Bachiller',
                                         options=[{'label': label, 'value': label} for label in
                                                  educational['valor'].unique()]
                                     )
@@ -313,6 +309,20 @@ app.layout = html.Div(children=[
 
     ),
     html.Div(
+        className='twelve columns card 3 pretty_container',
+        children=[
+            html.H5("Ocupaciones con Mayor Tasa de Desempleo"),
+            dcc.Graph(id="unemp_ocup"),
+        ]
+    ),
+    html.Div(
+        className='twelve columns card 3 pretty_container',
+        children=[
+            html.H5("Ingreso Promedio Por Ocupación"),
+            dcc.Graph(id="ing_ocup"),
+        ]
+    ),
+    html.Div(
         children=[
             html.Div(
                 [
@@ -334,20 +344,7 @@ app.layout = html.Div(children=[
         ],
 
     ),
-    html.Div(
-        className='twelve columns card 3 pretty_container',
-        children=[
-            html.H5("Ocupaciones con Mayor Tasa de Desempleo"),
-            dcc.Graph(id="unemp_ocup"),
-        ]
-    ),
-    html.Div(
-        className='twelve columns card 3 pretty_container',
-        children=[
-            html.H5("Ingreso Promedio Por Ocupación"),
-            dcc.Graph(id="ing_ocup"),
-        ]
-    )
+
 ])
 
 
@@ -366,10 +363,10 @@ def info_por_municipio(municipios):
     data.append(go.Choroplethmapbox(
         geojson=geojson,
         locations=df['MPIOS'],
-        z=df['HECTARES'],
+        z=df['DESEMPLEO'],
         colorscale='earth',
         text=df['NOMBRE_MPI'],
-        colorbar_title="HECTAREAS"
+        colorbar_title="DESEMPLEO"
     ))
     return data
 
@@ -524,9 +521,24 @@ def update_how_many_comoyo(month_value, municipios, educ_value, sex_value, age_s
     sql_many = "select round(100-100*(sum(\"Ocupado\"::INTEGER::FLOAT*fex_c_2011) / sum(fex_c_2011)::FLOAT)::NUMERIC, 2) as \"Tasa de desempleo\" from view_ocupados_desocupados where area = " + area_code + " and mes = " + month_value + " and \"Sexo\" = '" + sex_value + "'  and \"Nivel educativo\" = '" + educ_value + "' and \"Edad\" between " + str(
         age_slider[0]) + " and " + str(age_slider[1]) + ""
     how_json = get_rows(sql_many)
+    if how_json['data']['table'] == 'no info':
+        return "   Total: 0 meses"
+
     df = pd.DataFrame.from_dict(how_json['data']['table'])
-    value = df['Tasa de desempleo']
-    return "   Total: " + locale.format("%.2f", value, grouping=True) + "%"
+    # value = df['Tasa de desempleo']
+
+    # print(value)
+    if df['Tasa de desempleo'] is None:
+        return "   Total: 0 meses"
+    else:
+        value = df['Tasa de desempleo']
+        return "   Total: " + locale.format("%.2f", value, grouping=True) + "%"
+
+    # if df['Tasa de desempleo'].notnull():
+    #    value = df['Tasa de desempleo']
+    #    return "   Total: " + locale.format("%.2f", value, grouping=True) + "%"
+    # else:
+    #    value = df['Tasa de desempleo']
 
 
 @app.callback(dash.dependencies.Output('tiempo_estimado_model', 'children'),
